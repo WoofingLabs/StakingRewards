@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GDOG 流动性挖矿</title>
+    <link rel="icon" type="image/png" href="https://www.woofswap.finance/image/tokens/gdog.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0068FF',
+                        secondary: '#18E5A0',
+                        accent: '#FFD700',
+                        dark: '#070808',
+                        'light-gray': '#E5E7EB'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['Changa One', 'system-ui', 'sans-serif']
+                    },
+                    animation: { 'float': 'float 3s ease-in-out infinite' },
+                    keyframes: { float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } } }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow-glow { text-shadow: 0 0 10px rgba(0, 104, 255, 0.5); }
+            .glow-border { box-shadow: 0 0 12px rgba(24, 229, 160, 0.3); }
+            .bg-grid { background-image: url('data:image/svg+xml,%3Csvg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"%3E%3Ccircle cx="1" cy="1" r="1" fill="%230068FF" fill-opacity="0.1"/%3E%3C/svg%3E'); background-size: 20px 20px; }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Changa+One&display=swap" rel="stylesheet">
+</head>
+<body class="bg-dark text-white font-sans overflow-x-hidden">
+    <header class="fixed w-full z-50 bg-dark/90 backdrop-blur-md transition-all duration-300" id="navbar">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer hover:text-primary transition-colors">
+                <div class="w-10 h-10 rounded-full overflow-hidden">
+                    <img src="https://www.woofswap.finance/image/tokens/gdog.png" alt="GDOG Logo" class="w-full h-full object-cover">
+                </div>
+                <span class="font-display text-3xl text-primary text-shadow-glow">GDOG 挖矿</span>
+            </div>
+            <button id="menuToggle" class="md:hidden text-2xl text-primary">
+                <i class="fa fa-bars"></i>
+            </button>
+        </div>
+        <div id="mobileMenu" class="md:hidden bg-dark/95 absolute w-full top-full py-4 px-4 hidden">
+            <div class="flex flex-col space-y-4">
+                <a href="#mining" class="hover:text-primary transition-colors py-2 text-white">挖矿面板</a>
+            </div>
+        </div>
+    </header>
+
+    <section id="mining" class="min-h-screen pt-24 pb-16 bg-grid relative overflow-hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-gradient-to-b from-primary/10 to-dark pointer-events-none"></div>
+        <div class="absolute top-0 left-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-0 right-0 w-80 h-80 bg-secondary/10 rounded-full blur-3xl"></div>
+        <div class="container mx-auto px-4 text-center relative z-10">
+            <div class="w-48 h-48 mx-auto mb-8 animate-float">
+                <img src="https://www.woofswap.finance/image/tokens/gdog.png" alt="GDOG Logo" class="w-full h-full object-cover rounded-full border-4 border-secondary/50 glow-border">
+            </div>
+            <h1 class="font-display text-5xl md:text-7xl mb-6 text-primary text-shadow-glow">GDOG 流动性挖矿</h1>
+            <p class="text-xl md:text-2xl text-light-gray max-w-3xl mx-auto mb-10">质押 LP 代币，赚取 GDOG 奖励</p>
+
+            <div class="bg-dark/50 p-6 rounded-lg border border-primary/30 max-w-2xl mx-auto">
+                <div class="flex flex-col space-y-4">
+                    <button id="connectWalletButton" class="px-6 py-3 bg-primary text-white rounded-full font-medium hover:bg-primary/80 transition-all">连接钱包</button>
+                    <p id="networkStatus" class="text-light-gray text-sm">点击连接钱包...</p>
+
+                    <div class="flex items-center bg-dark/80 p-3 rounded-lg border border-primary/20">
+                        <i class="fa fa-link text-accent mr-3"></i>
+                        <span class="font-mono text-sm text-white truncate">0x7bd6D6478a769f50202683b7cA9e95E359f438F8</span>
+                        <button class="ml-3 text-light-gray hover:text-secondary transition-colors" onclick="copyContract()">
+                            <i class="fa fa-copy"></i>
+                        </button>
+                    </div>
+
+                    <div class="bg-dark/80 p-4 rounded-lg border border-primary/20 text-left">
+                        <p id="balanceStatus" class="text-light-gray text-sm">
+                            LP 余额: 0<br>
+                            已质押: 0<br>
+                            待领取奖励: 0<br>
+                            总质押量: 0
+                        </p>
+                    </div>
+
+                    <!-- 用户操作 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-left text-light-gray mb-1">质押数量</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" id="stakeAmount" placeholder="输入数量" class="flex-1 px-4 py-2 bg-dark/80 border border-primary/20 rounded-lg text-white focus:outline-none focus:border-secondary">
+                                <button id="maxStake" class="px-4 py-2 bg-secondary text-dark rounded-lg font-medium hover:bg-secondary/80 transition-all">Max</button>
+                            </div>
+                            <button id="stakeButton" class="mt-2 w-full px-6 py-3 bg-primary text-white rounded-full font-medium hover:bg-primary/80 transition-all disabled:bg-dark/50" disabled>质押</button>
+                        </div>
+                        <div>
+                            <label class="block text-left text-light-gray mb-1">取消质押</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" id="unstakeAmount" placeholder="输入数量" class="flex-1 px-4 py-2 bg-dark/80 border border-primary/20 rounded-lg text-white focus:outline-none focus:border-secondary">
+                                <button id="maxUnstake" class="px-4 py-2 bg-secondary text-dark rounded-lg font-medium hover:bg-secondary/80 transition-all">Max</button>
+                            </div>
+                            <button id="unstakeButton" class="mt-2 w-full px-6 py-3 bg-primary text-white rounded-full font-medium hover:bg-primary/80 transition-all disabled:bg-dark/50" disabled>取消质押</button>
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-3">
+                        <button id="harvestButton" class="flex-1 px-6 py-3 bg-secondary text-dark rounded-full font-medium hover:bg-secondary/80 transition-all disabled:bg-dark/50" disabled>领取奖励</button>
+                        <button id="emergencyButton" class="flex-1 px-6 py-3 bg-red-600 text-white rounded-full font-medium hover:bg-red-700 transition-all disabled:bg-dark/50" disabled>紧急提取</button>
+                    </div>
+
+                    <!-- Owner 面板 -->
+                    <div id="ownerSection" class="hidden mt-6 p-4 bg-dark/80 rounded-lg border border-secondary/30">
+                        <h3 class="text-lg font-bold text-secondary mb-3">Owner 管理</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-left text-light-gray mb-1">充值奖励代币数量</label>
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" id="rewardDeposit" placeholder="输入充值数量" class="flex-1 px-4 py-2 bg-dark/80 border border-primary/20 rounded-lg text-white focus:outline-none focus:border-secondary">
+                                    <button id="maxRewardDeposit" class="px-4 py-2 bg-secondary text-dark rounded-lg font-medium hover:bg-secondary/80 transition-all">Max</button>
+                                </div>
+                                <button id="depositRewardButton" class="mt-2 w-full px-6 py-3 bg-primary text-white rounded-full font-medium hover:bg-primary/80 transition-all disabled:bg-dark/50" disabled>充值奖励</button>
+                            </div>
+                            <div>
+                                <label class="block text-left text-light-gray mb-1">每秒奖励 (当前: 1 GDOG)</label>
+                                <input type="text" id="rewardRate" placeholder="如: 0.5" class="w-full px-4 py-2 bg-dark/80 border border-primary/20 rounded-lg text-white focus:outline-none focus:border-secondary">
+                                <button id="setRateButton" class="mt-2 w-full px-6 py-3 bg-accent text-dark rounded-full font-medium hover:bg-accent/80 transition-all disabled:bg-dark/50" disabled>设置奖励速率</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-dark/95 py-12 border-t border-primary/20">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-light-gray text-sm">© 2025 GDOG Liquidity Mining. DYOR.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <script>
+        const CONTRACT_ADDRESS = '0x7bd6D6478a769f50202683b7cA9e95E359f438F8';
+        const LP_TOKEN = '0xd5DBe6cf9Fec4e705bB4f219bf5b5185129c12b9';
+        const REWARD_TOKEN = '0x8e0474A49163F1764d56a9FD9342B87F1D1aEC00';
+        const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+
+        const erc20Abi = [
+            {"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+            {"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+            {"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},
+            {"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"type":"function"}
+        ];
+
+        const contractAbi = [
+            {"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"pendingReward","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"deposit","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[],"name":"harvest","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[],"name":"emergencyWithdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[],"name":"totalStaked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"userInfo","outputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"rewardDebt","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"_rewardPerSecond","type":"uint256"}],"name":"setRewardPerSecond","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}
+        ];
+
+        const chains = {
+            GateLayer: {
+                chainId: 10088,
+                chainName: 'Gate Layer',
+                rpcUrl: 'https://gatelayer-rpc.gatenode.cc',
+                blockExplorer: 'https://www.gatescan.org/gatelayer/',
+                nativeCurrency: { name: 'GT', symbol: 'GT', decimals: 18 }
+            }
+        };
+
+        let web3, account, lpContract, rewardContract, miningContract;
+
+        async function init() {
+            if (!window.ethereum) return document.getElementById('networkStatus').innerText = '请安装 MetaMask';
+            web3 = new Web3(window.ethereum);
+            try {
+                await ethereum.request({ method: 'eth_requestAccounts' });
+                account = (await web3.eth.getAccounts())[0];
+                document.getElementById('connectWalletButton').innerText = `${account.slice(0,6)}...${account.slice(-4)}`;
+                await switchToGateLayer();
+                await loadContracts();
+                await updateAll();
+                setInterval(updateAll, 10000);
+            } catch (e) { 
+                document.getElementById('networkStatus').innerText = '连接失败: ' + (e.message || '请检查网络');
+            }
+        }
+
+        async function switchToGateLayer() {
+            const chain = chains.GateLayer;
+            const chainIdHex = `0x${chain.chainId.toString(16)}`;
+            try {
+                await ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: chainIdHex }]
+                });
+            } catch (switchError) {
+                if (switchError.code === 4902 || switchError.code === -32603) {
+                    try {
+                        await ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: chainIdHex,
+                                chainName: chain.chainName,
+                                rpcUrls: [chain.rpcUrl],
+                                nativeCurrency: chain.nativeCurrency,
+                                blockExplorerUrls: [chain.blockExplorer]
+                            }]
+                        });
+                    } catch (addError) {
+                        throw new Error('请手动添加 GateLayer 网络');
+                    }
+                } else {
+                    throw switchError;
+                }
+            }
+        }
+
+        async function loadContracts() {
+            lpContract = new web3.eth.Contract(erc20Abi, LP_TOKEN);
+            rewardContract = new web3.eth.Contract(erc20Abi, REWARD_TOKEN);
+            miningContract = new web3.eth.Contract(contractAbi, CONTRACT_ADDRESS);
+        }
+
+        async function updateAll() {
+            if (!account) return;
+            try {
+                const [lpBal, rewardBal, userInfo, pending, totalStaked, owner] = await Promise.all([
+                    lpContract.methods.balanceOf(account).call(),
+                    rewardContract.methods.balanceOf(account).call(),
+                    miningContract.methods.userInfo(account).call(),
+                    miningContract.methods.pendingReward(account).call(),
+                    miningContract.methods.totalStaked().call(),
+                    miningContract.methods.owner().call()
+                ]);
+
+                const format = n => (Number(web3.utils.fromWei(n, 'ether'))).toFixed(4);
+                document.getElementById('balanceStatus').innerHTML = `
+                    LP 余额: ${format(lpBal)}<br>
+                    已质押: ${format(userInfo.amount)}<br>
+                    待领取奖励: ${format(pending)}<br>
+                    总质押量: ${format(totalStaked)}
+                `;
+
+                const staked = Number(userInfo.amount);
+                const canUnstake = staked > 0;
+                const canHarvest = Number(pending) > 0;
+
+                document.getElementById('stakeButton').disabled = Number(lpBal) <= 0;
+                document.getElementById('unstakeButton').disabled = !canUnstake;
+                document.getElementById('harvestButton').disabled = !canHarvest;
+                document.getElementById('emergencyButton').disabled = !canUnstake;
+
+                document.getElementById('maxStake').onclick = () => document.getElementById('stakeAmount').value = format(lpBal);
+                document.getElementById('maxUnstake').onclick = () => document.getElementById('unstakeAmount').value = format(userInfo.amount);
+                document.getElementById('maxRewardDeposit').onclick = () => document.getElementById('rewardDeposit').value = format(rewardBal);
+
+                if (owner.toLowerCase() === account.toLowerCase()) {
+                    document.getElementById('ownerSection').classList.remove('hidden');
+                } else {
+                    document.getElementById('ownerSection').classList.add('hidden');
+                }
+
+                document.getElementById('networkStatus').innerText = '数据已更新';
+            } catch (e) {
+                document.getElementById('networkStatus').innerText = '更新失败: ' + (e.message || '');
+            }
+        }
+
+        async function approve(tokenContract, amount) {
+            const allowance = await tokenContract.methods.allowance(account, CONTRACT_ADDRESS).call();
+            if (web3.utils.toBN(allowance).gte(web3.utils.toBN(amount))) return true;
+            await tokenContract.methods.approve(CONTRACT_ADDRESS, MAX_UINT).send({ from: account });
+            return true;
+        }
+
+        async function stake() {
+            const amt = document.getElementById('stakeAmount').value.trim();
+            if (!amt || isNaN(amt) || Number(amt) <= 0) return alert('请输入有效数量');
+            const wei = web3.utils.toWei(amt, 'ether');
+            await approve(lpContract, wei);
+            await miningContract.methods.deposit(wei).send({ from: account });
+            updateAll();
+        }
+
+        async function unstake() {
+            const amt = document.getElementById('unstakeAmount').value.trim();
+            if (!amt || isNaN(amt) || Number(amt) <= 0) return alert('请输入有效数量');
+            const wei = web3.utils.toWei(amt, 'ether');
+            await miningContract.methods.withdraw(wei).send({ from: account });
+            updateAll();
+        }
+
+        async function harvest() {
+            await miningContract.methods.harvest().send({ from: account });
+            updateAll();
+        }
+
+        async function emergency() {
+            if (!confirm('紧急提取将放弃所有未领取奖励，确定吗？')) return;
+            await miningContract.methods.emergencyWithdraw().send({ from: account });
+            updateAll();
+        }
+
+        async function depositReward() {
+            const amt = document.getElementById('rewardDeposit').value.trim();
+            if (!amt || isNaN(amt) || Number(amt) <= 0) return alert('请输入有效数量');
+            const wei = web3.utils.toWei(amt, 'ether');
+            await rewardContract.methods.transfer(CONTRACT_ADDRESS, wei).send({ from: account });
+            updateAll();
+        }
+
+        async function setRewardRate() {
+            const rate = document.getElementById('rewardRate').value.trim();
+            if (!rate || isNaN(rate) || Number(rate) <= 0) return alert('请输入有效速率');
+            const wei = web3.utils.toWei(rate, 'ether');
+            await miningContract.methods.setRewardPerSecond(wei).send({ from: account });
+            updateAll();
+        }
+
+        function copyContract() {
+            navigator.clipboard.writeText(CONTRACT_ADDRESS);
+            alert('合约地址已复制');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('connectWalletButton').onclick = init;
+            document.getElementById('stakeButton').onclick = stake;
+            document.getElementById('unstakeButton').onclick = unstake;
+            document.getElementById('harvestButton').onclick = harvest;
+            document.getElementById('emergencyButton').onclick = emergency;
+            document.getElementById('depositRewardButton').onclick = depositReward;
+            document.getElementById('setRateButton').onclick = setRewardRate;
+
+            const menuToggle = document.getElementById('menuToggle');
+            const mobileMenu = document.getElementById('mobileMenu');
+            menuToggle.onclick = () => {
+                mobileMenu.classList.toggle('hidden');
+                menuToggle.innerHTML = mobileMenu.classList.contains('hidden') ? '<i class="fa fa-bars"></i>' : '<i class="fa fa-times"></i>';
+            };
+        });
+    </script>
+</body>
+</html>
